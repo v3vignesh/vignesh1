@@ -1,0 +1,101 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+from sklearn.model_selection import train_test_split
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.svm import LinearSVC
+from sklearn.metrics import (
+    accuracy_score,
+    confusion_matrix,
+    classification_report
+)
+
+# 1. Load and clean dataset
+data = pd.read_csv("spam.csv", encoding="latin-1")
+data = data[["v1", "v2"]]
+data.columns = ["label", "message"]
+data = data.drop_duplicates()
+
+print("Dataset loaded successfully!")
+print("Total messages:", len(data))
+
+# 2. Separate messages and labels
+X = data["message"]
+y = data["label"]
+
+# 3. Split the dataset
+X_train, X_test, y_train, y_test = train_test_split(
+    X,
+    y,
+    test_size=0.2,
+    random_state=42,
+    stratify=y
+)
+
+# 4. Convert text into numerical features
+vectorizer = TfidfVectorizer()
+
+X_train_tfidf = vectorizer.fit_transform(X_train)
+X_test_tfidf = vectorizer.transform(X_test)
+
+# 5. Train SVM model
+model = LinearSVC()
+model.fit(X_train_tfidf, y_train)
+
+print("\nSVM model trained successfully!")
+
+# 6. Evaluate model
+predictions = model.predict(X_test_tfidf)
+
+accuracy = accuracy_score(y_test, predictions) * 100
+print(f"\nModel Accuracy: {accuracy:.2f}%")
+
+# 7. Classification Report
+print("\nClassification Report:")
+print(classification_report(y_test, predictions))
+
+# 8. Confusion Matrix
+cm = confusion_matrix(
+    y_test,
+    predictions,
+    labels=["ham", "spam"]
+)
+
+print("\nConfusion Matrix:")
+print(cm)
+
+# 9. Visualize Confusion Matrix
+plt.figure(figsize=(6, 4))
+
+sns.heatmap(
+    cm,
+    annot=True,
+    fmt="d",
+    cmap="Blues",
+    xticklabels=["HAM", "SPAM"],
+    yticklabels=["HAM", "SPAM"]
+)
+
+plt.xlabel("Predicted Label")
+plt.ylabel("Actual Label")
+plt.title("Spam Classifier - Confusion Matrix")
+plt.tight_layout()
+plt.show()
+
+# 10. Predict new messages
+while True:
+    message = input("\nEnter a message (or type exit): ")
+
+    if message.strip().lower() == "exit":
+        print("Program closed.")
+        break
+
+    if not message.strip():
+        print("Please enter a message.")
+        continue
+
+    message_tfidf = vectorizer.transform([message])
+    prediction = model.predict(message_tfidf)[0]
+
+    print("Prediction:", prediction.upper())
